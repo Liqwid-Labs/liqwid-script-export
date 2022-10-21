@@ -21,6 +21,7 @@ module ScriptExport.ScriptInfo (
 
   -- * Linker utilities
   runLinker,
+  composeLinker,
   fetchTS,
   getParam,
   getRawScripts,
@@ -241,6 +242,23 @@ toRoledScript ::
   TypedScript rl param ->
   RoledScript
 toRoledScript = toRoledScript'
+
+{- | Compose linker. The composed linker expects raw scripts of both given linkers.
+
+ @since 2.1.0
+-}
+composeLinker ::
+  forall (param1:: Type) (param2 :: Type) (a :: Type).
+  Linker param1 param2 ->
+  Linker param2 a ->
+  Linker param1 a
+composeLinker l1 (Linker l2) = do
+  x <- l1
+  rs <- getRawScripts
+
+  case runExcept $ runReaderT l2 (rs, x) of
+    Left x -> throwError x
+    Right x -> return x
 
 -- Internal helper for CBOR deserialization
 newtype CBORSerializedScript = CBORSerializedScript SBS.ShortByteString

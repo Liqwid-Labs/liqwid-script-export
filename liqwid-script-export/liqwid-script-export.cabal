@@ -117,8 +117,8 @@ executable export-stat
   main-is:        Main.hs
   build-depends:  liqwid-script-export
 
-executable example
+executable export-example
   import:         lang, deps
-  hs-source-dirs: example
+  hs-source-dirs: export-example
   main-is:        Main.hs
   build-depends:  liqwid-script-export

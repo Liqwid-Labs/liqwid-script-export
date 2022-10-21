@@ -29,35 +29,36 @@
     liqwid-plutarch-extra.url = "github:Liqwid-Labs/liqwid-plutarch-extra";
     plutarch-numeric.url =
       "github:liqwid-labs/plutarch-numeric?ref=main";
+
+
+    # liqwid-script-import
+
+    ctl = {
+      type = "github";
+      owner = "Plutonomicon";
+      repo = "cardano-transaction-lib";
+      rev = "39fc516c7c837401427b46637dacd9c7ada6274d";
+    };
   };
 
-  outputs = inputs@{ liqwid-nix, ... }:
-    (liqwid-nix.buildProject
-      {
-        inherit inputs;
-        src = ./.;
-      }
-      [
-        liqwid-nix.haskellProject
-        liqwid-nix.plutarchProject
-        (liqwid-nix.addDependencies [
-          "${inputs.ply}/ply-core"
-          "${inputs.ply}/ply-plutarch"
-          "${inputs.liqwid-plutarch-extra}"
-          "${inputs.plutarch-numeric}"
-        ])
-        (liqwid-nix.enableFormatCheck [
-          "-XQuasiQuotes"
-          "-XTemplateHaskell"
-          "-XTypeApplications"
-          "-XImportQualifiedPost"
-          "-XPatternSynonyms"
-          "-XOverloadedRecordDot"
-        ])
-        liqwid-nix.enableLintCheck
-        liqwid-nix.enableCabalFormatCheck
-        liqwid-nix.enableNixFormatCheck
-        liqwid-nix.addBuildChecks
-      ]
-    ).toFlake;
+  outputs = inputs@{ self, nixpkgs, ... }:
+    let
+      defaultSystems =
+        [ "x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin" ];
+      perSystem = nixpkgs.lib.genAttrs defaultSystems;
+    in
+    {
+      liqwid-script-import = {
+        flake = (import ./liqwid-script-import/flake.nix) { inherit inputs; };
+      };
+      liqwid-script-export = {
+        flake = (import ./liqwid-script-export/flake.nix) { inherit inputs; };
+      };
+
+      devShells = perSystem (system: rec {
+        default = liqwid-script-export;
+        liqwid-script-import = self.liqwid-script-import.flake.devShell.${system};
+        liqwid-script-export = self.liqwid-script-export.flake.devShell.${system};
+      });
+    };
 }
