@@ -1,64 +1,32 @@
 module Main where
 
-import Contract.Prelude
+import Contract.Prelude (Unit, bind, discard, log, show, ($))
 
 import Aeson as Aeson
 import Effect (Effect)
 import Effect.Class (liftEffect)
-import Effect.Console (log)
-import Effect.Aff
-import Node.FS.Aff (readTextFile)
-import Node.Encoding (Encoding(..))
-import ScriptImport.ScriptInfo
-import ScriptImport.File
-import Type.Proxy
+import Effect.Aff (launchAff_)
+import ScriptImport.ScriptInfo (ScriptExport)
+import ScriptImport.File (compileScript)
+import ScriptImport.Http (queryScript)
 
-import Type.Data.Symbol
-
-import Prim.RowList (Cons, Nil, RowList, class RowToList)
-
-type OracleScriptInfo =
-  { hello :: String
-  }
-
-type QueryType =
-  ( oracle :: ScriptExport OracleScriptInfo
-  , oracleDebug :: ScriptExport OracleScriptInfo
-  )
-
--- We should never use query without parameter, since it is impossible to link
--- in purescript.
-
-type Test = "hello world!"
-
-class ToStr :: forall k. RowList k -> Constraint
-class ToStr list where
-  toStr :: Proxy list -> String
-
-instance ToStr Nil where
-  toStr _ = ""
-
-instance (IsSymbol sym, ToStr next) => ToStr (Cons sym head next) where
-  toStr _ = reflectSymbol (SProxy :: SProxy sym) <> toStr (Proxy :: Proxy next)
-
-test ::
-  forall rt rl.
-  RowToList rt rl =>
-  ToStr rl =>
-  Proxy rt ->
-  Effect Unit
-test _ =
-  log $ toStr (Proxy :: Proxy rl)
-
+-- | Example usage
 main :: Effect Unit
 main = launchAff_ do
-  (oracle :: ScriptExport OracleScriptInfo) <-
-    liftEffect $ decodeFromFile "./oracle.json"
+  (oracle :: ScriptExport Int) <-
+    queryScript
+      "http://localhost:8080"
+      { name: "my-onchain-project-param"
+      , param: Aeson.encodeAeson 1
+      }
+
+  (oracle2 :: ScriptExport Int) <-
+    compileScript
+      "export-example"
+      { name: "my-onchain-project-param"
+      , param: Aeson.encodeAeson 1
+      }
 
   liftEffect $ log $ show oracle
 
-  liftEffect $ log "🍝"
-
-  liftEffect $ log $ reflectSymbol (SProxy :: SProxy Test)
-
-  liftEffect $ test (Proxy :: Proxy QueryType)
+  liftEffect $ log $ show oracle2

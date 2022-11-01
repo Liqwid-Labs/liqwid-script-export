@@ -34,7 +34,10 @@ let
         spagoPackages = ./spago-packages.nix;
 
         shell = {
-          packages = [ pkgs.fd ];
+          packages = with pkgs; [
+            fd
+            self.liqwid-script-export.flake.packages.${system}."liqwid-script-export:exe:export-example"
+          ];
 
           shellHook = "";
 

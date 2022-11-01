@@ -12,11 +12,11 @@
   , "node-buffer"
   , "node-fs-aff"
   , "node-path"
-  , "argonaut"
   , "node-fs"
-  , "ordered-collections"
-  , "refs"
-  , "typelevel-prelude"
+  , "node-child-process"
+  , "milkis"
+  , "exceptions"
+  , "transformers"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

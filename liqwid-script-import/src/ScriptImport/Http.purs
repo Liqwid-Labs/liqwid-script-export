@@ -1,19 +1,35 @@
 module ScriptImport.Http where
 
-import Aeson (Aeson)
-import Data.Argonaut (Json)
-import ScriptImport.ScriptInfo (ScriptExport)
-import Data.Map (Map)
-import Effect.Ref (Ref)
+import Contract.Prelude
 
-newtype ScriptCache = ScriptCache (Ref (Map Json Aeson))
+import Effect.Exception (throw)
+import Effect.Aff (Aff)
+import Milkis as M
+import Milkis.Impl.Node (nodeFetch)
+import Aeson (Aeson, class DecodeAeson)
+import Aeson as Aeson
+import ScriptImport.ScriptInfo (ScriptExport, ScriptQuery)
 
--- | The type of making a query to `agora-scripts` server.
-type ScriptQuery =
-  { name :: String
-  , paramsPayload :: Aeson
-  }
+-- | Query script export from server.
+queryScript
+  :: forall a.
+     DecodeAeson a =>
+     String ->
+     ScriptQuery ->
+     Aff (ScriptExport a)
+queryScript
+  serverURL
+  { name, param } = do
+    let
+      fetch = M.fetch nodeFetch
+      opts =
+        { method: M.postMethod
+        , body: Aeson.stringifyAeson param
+        , headers: M.makeHeaders { "Content-Type": "application/json" }
+        }
+    result <- fetch (M.URL $ serverURL <> "/query-script/" <> name) opts
+    raw <- M.text result
 
-type Fetcher =
-  {
-  }
+    case (M.statusCode result) of
+      200 -> either (liftEffect <<< throw <<< show) pure $ Aeson.decodeJsonString raw
+      _ -> liftEffect $ throw raw

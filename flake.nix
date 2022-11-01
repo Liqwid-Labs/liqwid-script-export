@@ -47,9 +47,9 @@
         [ "x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin" ];
       perSystem = nixpkgs.lib.genAttrs defaultSystems;
     in
-    {
+    rec {
       liqwid-script-import = {
-        flake = (import ./liqwid-script-import/flake.nix) { inherit inputs; };
+        flake = (import ./liqwid-script-import/flake.nix) { inherit inputs liqwid-script-export; };
       };
       liqwid-script-export = {
         flake = (import ./liqwid-script-export/flake.nix) { inherit inputs; };

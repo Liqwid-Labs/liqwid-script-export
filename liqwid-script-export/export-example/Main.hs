@@ -107,7 +107,7 @@ myProjectParameterized =
       ]
 
 -- This is example script linker.
-myProjectLinker :: Linker Integer (ScriptExport ())
+myProjectLinker :: Linker Integer (ScriptExport Integer)
 myProjectLinker = do
   as <- fetchTS @ValidatorRole @'[Integer] "alwaysSucceeds"
   arg <- getParam
@@ -118,4 +118,4 @@ myProjectLinker = do
           [ ("alwaysSucceeds", toRoledScript $ as Ply.# arg)
           ]
       )
-      ()
+      arg

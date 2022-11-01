@@ -16,11 +16,19 @@ import Node.Encoding (Encoding (UTF8))
 import Effect (Effect)
 import Data.Either (Either)
 
+-- | The type of making a query to `agora-scripts` server.
+type ScriptQuery =
+  { name :: String
+  , param :: Aeson.Aeson
+  }
+
+-- | Bundled script export
 type ScriptExport a =
   { info :: a
   , scripts :: Object CompiledScript
   }
 
+-- | Individual scripts
 newtype CompiledScript = CompiledScript
   { cborHex :: ByteArray
   , hash :: ScriptHash
