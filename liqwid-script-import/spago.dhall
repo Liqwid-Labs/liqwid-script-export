@@ -17,6 +17,7 @@
   , "milkis"
   , "exceptions"
   , "transformers"
+  , "posix-types"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]
