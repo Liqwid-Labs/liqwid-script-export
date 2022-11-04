@@ -3,20 +3,15 @@ module ScriptImport.ScriptInfo where
 import Contract.Prelude
 
 import Aeson as Aeson
-import Aeson (class DecodeAeson, decodeAeson, JsonDecodeError)
+import Aeson (class DecodeAeson, decodeAeson)
 import Foreign.Object (Object)
 import Contract.Address (ByteArray)
 import Contract.Scripts (ScriptHash)
 import Data.Show.Generic (genericShow)
 import Data.Generic.Rep (class Generic)
 import Data.Newtype (class Newtype)
-import Node.FS.Sync (readTextFile)
-import Node.Path (FilePath)
-import Node.Encoding (Encoding (UTF8))
-import Effect (Effect)
-import Data.Either (Either)
 
--- | The type of making a query to `agora-scripts` server.
+-- | The type of making a query to `agora-scripts` server
 type ScriptQuery =
   { name :: String
   , param :: Aeson.Aeson
@@ -35,8 +30,8 @@ newtype CompiledScript = CompiledScript
   , rawHex :: ByteArray
   }
 
-derive instance eqOracleScripts :: Eq CompiledScript
-derive instance ordOracleScripts :: Ord CompiledScript
+derive instance eqCompiledScripts :: Eq CompiledScript
+derive instance ordCompiledScripts :: Ord CompiledScript
 
 derive instance Generic CompiledScript _
 derive instance Newtype CompiledScript _

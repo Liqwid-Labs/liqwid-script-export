@@ -6,7 +6,7 @@ import Effect.Exception (throw)
 import Effect.Aff (Aff)
 import Milkis as M
 import Milkis.Impl.Node (nodeFetch)
-import Aeson (Aeson, class DecodeAeson)
+import Aeson (class DecodeAeson)
 import Aeson as Aeson
 import ScriptImport.ScriptInfo (ScriptExport, ScriptQuery)
 
