@@ -12,9 +12,9 @@ import Data.Generic.Rep (class Generic)
 import Data.Newtype (class Newtype)
 
 -- | The type of making a query to `agora-scripts` server
-type ScriptQuery =
+type ScriptQuery p =
   { name :: String
-  , param :: Aeson.Aeson
+  , param :: p
   }
 
 -- | Bundled script export

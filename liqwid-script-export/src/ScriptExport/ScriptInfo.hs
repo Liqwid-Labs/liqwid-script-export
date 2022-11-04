@@ -248,7 +248,7 @@ toRoledScript = toRoledScript'
  @since 2.1.0
 -}
 composeLinker ::
-  forall (param1:: Type) (param2 :: Type) (a :: Type).
+  forall (param1 :: Type) (param2 :: Type) (a :: Type).
   Linker param1 param2 ->
   Linker param2 a ->
   Linker param1 a

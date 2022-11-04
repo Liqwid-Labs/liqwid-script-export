@@ -4,7 +4,7 @@ import Contract.Prelude
 
 import Control.Monad.Error.Class (try)
 import Aeson as Aeson
-import Aeson (class DecodeAeson)
+import Aeson (class DecodeAeson, class EncodeAeson)
 import Node.FS.Aff (readTextFile, writeTextFile, mkdir)
 import Node.Path (FilePath)
 import Node.Encoding (Encoding (UTF8))
@@ -23,10 +23,11 @@ decodeScript path = do
 
 -- | Compile script exports with given linker and parameter
 compileScript ::
-  forall a.
+  forall a param.
   DecodeAeson a =>
+  EncodeAeson param =>
   String ->
-  ScriptQuery ->
+  ScriptQuery param ->
   Aff (ScriptExport a)
 compileScript cmd { name, param } = do
   let dir = name <> "-export"
