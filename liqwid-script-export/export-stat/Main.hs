@@ -1,86 +1,121 @@
-import Codec.Serialise (serialise)
-import Control.Applicative ((<|>))
-import Data.Aeson qualified as Aeson
-import Data.Aeson.Encode.Pretty (encodePretty)
-import Data.ByteString qualified as BS
-import Data.ByteString.Lazy qualified as LBS
-import Data.ByteString.Short qualified as SBS
-import Data.Map (Map, fromList, toList)
-import Data.Text (Text)
-import GHC.Generics qualified as GHC
-import Optics (view)
-import Plutarch.Evaluate (evalScript)
-import PlutusLedgerApi.V2 (
-  ExBudget (ExBudget),
-  ExCPU (..),
-  ExMemory (..),
-  Script,
+{-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
+
+{- | Module     : Main
+     Maintainer : emi@haskell.fyi
+     Description: Example usage of 'liqwid-script-export'.
+
+Example usage of 'liqwid-script-export'.
+-}
+module Main (main) where
+
+import Data.Default (def)
+import Data.Map (fromList)
+import Data.Text (unpack)
+import Plutarch (compile)
+import Plutarch.Api.V2 (PValidator)
+import Plutarch.Prelude (
+  ClosedTerm,
+  PInteger,
+  PUnit (PUnit),
+  pcon,
+  pconstant,
+  plam,
+  plet,
+  popaque,
+  tcont,
+  unTermCont,
+  (#),
+  (:-->),
  )
-import Ply (TypedScriptEnvelope (tsScript))
-import ScriptExport.ScriptInfo (RawScriptExport, ScriptExport)
-import System.Environment (getArgs, getProgName)
-import System.Exit (die)
-import System.FilePath (takeBaseName)
-
-data FileFormats
-  = Raw RawScriptExport
-  | Export (ScriptExport ())
-  | MultipleExport (Map Text (ScriptExport ()))
-  deriving stock (Show)
-
-data ScriptStats = ScriptStats
-  { size :: Int
-  , cpuBudget :: ExCPU
-  , memBudget :: ExMemory
-  }
-  deriving stock (Show, GHC.Generic)
-  deriving anyclass (Aeson.ToJSON)
-
-help :: IO a
-help = do
-  pname <- getProgName
-  die $ "Usage: " <> pname <> " [export/raw export file]"
-
-decodeExport :: FilePath -> IO (Either String FileFormats)
-decodeExport filename = do
-  content <- BS.readFile filename <|> help
-
-  return $
-    Raw <$> Aeson.eitherDecodeStrict content
-      <|> Export <$> Aeson.eitherDecodeStrict content
-      <|> MultipleExport <$> Aeson.eitherDecodeStrict content
-
-makeStats :: FileFormats -> Map Text ScriptStats
-makeStats =
-  \case
-    Raw e -> go . tsScript <$> view #rawScripts e
-    Export e -> go . view #script <$> view #scripts e
-    MultipleExport e ->
-      fromList $
-        foldMap
-          ( \(k, x) ->
-              (\(k', x') -> (k <> "-" <> k', go $ view #script x'))
-                <$> toList (view #scripts x)
-          )
-          $ toList e
-  where
-    go :: Script -> ScriptStats
-    go script =
-      let (_res, ExBudget cpu mem, _traces) = evalScript script
-          size = SBS.length . SBS.toShort . LBS.toStrict . serialise $ script
-       in ScriptStats size cpu mem
+import Ply ((#))
+import Ply.Plutarch.TypedWriter (mkEnvelope)
+import ScriptExport.Export (exportMain)
+import ScriptExport.ScriptInfo (
+  Linker,
+  RawScriptExport (RawScriptExport),
+  RoledScript (RoledScript),
+  ScriptExport (ScriptExport),
+  ScriptRole (ValidatorRole),
+  fetchTS,
+  getParam,
+  mkValidatorInfo,
+  toRoledScript,
+ )
+import ScriptExport.Types (
+  Builders,
+  insertBuilder,
+  insertScriptExportWithLinker,
+  insertStaticBuilder,
+ )
 
 main :: IO ()
-main = do
-  exportFile <-
-    getArgs >>= \case
-      (x : _) -> return x
-      _ -> help
+main = exportMain builders
 
-  exportContent' <- decodeExport exportFile
+{-
+This is the collection of builders. API and file will be created based on provided
+builders. There are various `insertXYZBuilder` functions to provide versatile ways
+of adding builders.
 
-  case exportContent' of
-    Left e -> die $ "Failed to parse: " <> e
-    Right exportContent ->
-      LBS.writeFile (takeBaseName exportFile <> "-stats.json") . encodePretty $
-        makeStats exportContent
+`insertStaticBuilder` will insert builder that does not have any
+argument--as "static" suggests.
+
+`insertBuilder` will insert builder from a function. Argument type
+needs `Aeson.FromJSON` and return type needs `Aeson.ToJSON`.
+
+`insertScriptExportWithLinker` is similar to `insertBuilder` but
+specialized to `RawScriptExport` and `Linker`. It will automatically
+handle linker given parameter. Also, it will return serialized
+`RawScript` if no parameter is given.
+-}
+builders :: Builders
+builders =
+  mconcat
+    [ insertStaticBuilder "alwaysSucceeds" (mkValidatorInfo alwaysSucceeds)
+    , insertBuilder @Integer
+        "alwaysSucceedsParam"
+        (\x -> mkValidatorInfo (alwaysSucceedsParam Plutarch.Prelude.# pconstant x))
+    , insertStaticBuilder "my-onchain-project" myproject
+    , insertScriptExportWithLinker "my-onchain-project-param" myProjectParameterized myProjectLinker
+    ]
+
+-- This is our dummy validator.
+alwaysSucceeds :: ClosedTerm PValidator
+alwaysSucceeds = plam $ \_ _ _ -> popaque (pcon PUnit)
+
+-- This is our dummy paramterized validator.
+alwaysSucceedsParam :: ClosedTerm (PInteger :--> PValidator)
+alwaysSucceedsParam = plam $ \x _ _ _ -> unTermCont $ do
+  _ <- tcont $ plet $ x + x
+  pure $ popaque (pcon PUnit)
+
+-- This is example `ScriptExport`
+myproject :: ScriptExport Int
+myproject =
+  ScriptExport
+    ( fromList
+        [ ("alwaysSucceeds", RoledScript (either (error . unpack) id $ compile def alwaysSucceeds) ValidatorRole)
+        ]
+    )
+    10
+
+-- This is example `RawScriptExport`.
+myProjectParameterized :: RawScriptExport
+myProjectParameterized =
+  RawScriptExport $
+    fromList
+      [ ("alwaysSucceeds", either (error . unpack) id $ mkEnvelope def "alwaysSucceedsParam" alwaysSucceedsParam)
+      ]
+
+-- This is example script linker.
+myProjectLinker :: Linker Integer (ScriptExport ())
+myProjectLinker = do
+  as <- fetchTS @ValidatorRole @'[Integer] "alwaysSucceeds"
+  arg <- getParam
+
+  return $
+    ScriptExport
+      ( fromList
+          [ ("alwaysSucceeds", toRoledScript $ as Ply.# arg)
+          ]
+      )
+      ()

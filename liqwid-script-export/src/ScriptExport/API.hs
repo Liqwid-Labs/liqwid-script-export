@@ -85,7 +85,7 @@ runServer revision builders options = do
             corsRequestHeaders = "content-type" : corsRequestHeaders simpleCorsResourcePolicy
           }
 
-      corsMiddleware = cors . const $ Just corsPolicy
+      corsMiddleware = ((cors . const $ Just corsPolicy))
 
       serverInfo =
         ExporterInfo
