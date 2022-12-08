@@ -1,4 +1,4 @@
-self@{inputs, ...}:
+self@{ inputs, ... }:
 let
   inherit (inputs) liqwid-nix;
 in

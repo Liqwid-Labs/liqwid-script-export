@@ -11,7 +11,8 @@ module Main (main) where
 import Data.Default (def)
 import Data.Map (fromList)
 import Data.Text (unpack)
-import Plutarch.Api.V2 (PValidator, mkValidator)
+import Plutarch (compile)
+import Plutarch.Api.V2 (PValidator)
 import Plutarch.Prelude (
   ClosedTerm,
   PInteger,
@@ -26,7 +27,6 @@ import Plutarch.Prelude (
   (#),
   (:-->),
  )
-import PlutusLedgerApi.V2 (Validator (getValidator))
 import Ply ((#))
 import Ply.Plutarch.TypedWriter (mkEnvelope)
 import ScriptExport.Export (exportMain)
@@ -93,7 +93,7 @@ myproject :: ScriptExport Int
 myproject =
   ScriptExport
     ( fromList
-        [ ("alwaysSucceeds", RoledScript (getValidator $ mkValidator def alwaysSucceeds) ValidatorRole)
+        [ ("alwaysSucceeds", RoledScript (either (error . unpack) id $ compile def alwaysSucceeds) ValidatorRole)
         ]
     )
     10
@@ -107,7 +107,7 @@ myProjectParameterized =
       ]
 
 -- This is example script linker.
-myProjectLinker :: Linker Integer (ScriptExport Integer)
+myProjectLinker :: Linker Integer (ScriptExport ())
 myProjectLinker = do
   as <- fetchTS @ValidatorRole @'[Integer] "alwaysSucceeds"
   arg <- getParam
@@ -118,4 +118,4 @@ myProjectLinker = do
           [ ("alwaysSucceeds", toRoledScript $ as Ply.# arg)
           ]
       )
-      arg
+      ()

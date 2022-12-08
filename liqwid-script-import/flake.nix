@@ -1,4 +1,4 @@
-self@{inputs, ...}:
+self@{ inputs, ... }:
 let
   inherit (inputs) ctl nixpkgs;
 
@@ -20,34 +20,34 @@ let
       pkgs = nixpkgsFor system;
       src = self;
     in
-      pkgs.purescriptProject {
-        inherit pkgs src;
-        packageJson = ./package.json;
-        packageLock = ./package-lock.json;
+    pkgs.purescriptProject {
+      inherit pkgs src;
+      packageJson = ./package.json;
+      packageLock = ./package-lock.json;
 
-        strictComp = false;
+      strictComp = false;
 
-        projectName = "liqwid-script-import";
+      projectName = "liqwid-script-import";
 
-        nodejs = pkgs.nodejs-14_x;
+      nodejs = pkgs.nodejs-14_x;
 
-        spagoPackages = ./spago-packages.nix;
+      spagoPackages = ./spago-packages.nix;
 
-        shell = {
-          packages = with pkgs; [
-            fd
-            self.liqwid-script-export.flake.packages.${system}."liqwid-script-export:exe:export-example"
-          ];
+      shell = {
+        packages = with pkgs; [
+          fd
+          self.liqwid-script-export.flake.packages.${system}."liqwid-script-export:exe:export-example"
+        ];
 
-          shellHook = "";
+        shellHook = "";
 
-          inputsFrom = [ ];
+        inputsFrom = [ ];
 
-          formatter = "purs-tidy";
+        formatter = "purs-tidy";
 
-          pursls = true;
-        };
+        pursls = true;
       };
+    };
   ctlRuntimeConfig = {
     network = {
       name = "preview";
@@ -66,35 +66,35 @@ in
 {
   packages = perSystem (system: {
     liqwid-script-import = (psProjectFor system).buildPursProject {
-      sources = ["src"];
+      sources = [ "src" ];
     };
   });
 
   checks = perSystem (system:
     let pkgs = nixpkgsFor system;
     in
-      {
-        liqwid-script-import = (psProjectFor system).runPursTest {
-          sources = [ "src" ];
-        };
-        formatting-check = pkgs.runCommand "formatting-check"
-          {
-            nativeBuildInputs = [ pkgs.easy-ps.purs-tidy pkgs.fd ];
-          } ''
-                      cd ${self}
-                                  purs-tidy check $(fd -epurs)
-                                              touch $out
-                                                        '';
-      });
+    {
+      liqwid-script-import = (psProjectFor system).runPursTest {
+        sources = [ "src" ];
+      };
+      formatting-check = pkgs.runCommand "formatting-check"
+        {
+          nativeBuildInputs = [ pkgs.easy-ps.purs-tidy pkgs.fd ];
+        } ''
+        cd ${self}
+                    purs-tidy check $(fd -epurs)
+                                touch $out
+      '';
+    });
 
   check = perSystem (system:
     (nixpkgsFor system).runCommand "combined-test"
       {
         checksss = builtins.attrValues self.checks.${system};
       } ''
-                echo $checksss
-                          touch $out
-                                  '');
+      echo $checksss
+                touch $out
+    '');
 
   devShell = perSystem (system: (psProjectFor system).devShell);
 }
